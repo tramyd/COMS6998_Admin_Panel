@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# COMS 6998 Admin Panel
 
-## Getting Started
+Next.js admin interface for the Supabase project used by `COMS6998-Hello_World`.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Google sign-in through Supabase Auth. The Google provider must be enabled in the existing Supabase project.
+- Protected dashboard, profiles, AI comments, and ratings/votes pages.
+- AI comments are managed as the existing `posts.caption` field: create adds a caption to an uncaptained post, edit updates it, and delete clears it.
+- Ratings show the `posts.likes` / `posts.dislikes` counters separately from counts calculated from individual `post_votes` rows.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Copy `.env.example` to `.env.local` and fill in the project URL and publishable key from the Supabase project used by Hello World.
+2. Enable Google as a Supabase Auth provider. Add this app's local and deployed callback URLs (`https://<app-host>/auth/callback`) to the provider's redirect allow list.
+3. Apply both SQL files in `../../COMS6998-Hello_World/supabase/migrations` to the Hello World Supabase project in timestamp order. The second migration copies the required email from Auth, creates profiles automatically for new users, backfills missing rows, and grants authenticated users RLS-limited access to read/create/update only their own profile.
+4. Create/sign in the intended Google account in Hello World, then add its Supabase Auth user ID as a superadmin using the Supabase SQL Editor:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```sql
+   select id, email from auth.users order by created_at desc;
 
-## Learn More
+   insert into public.superadmins (user_id)
+   values ('<the-superadmin-auth-user-id>')
+   on conflict (user_id) do nothing;
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+   Remove access by deleting that user's row from `public.superadmins`.
+5. Use Node.js 22 or later, then run `npm install` and `npm run dev`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The Hello World button, Google OAuth callback, protected admin routes, and comment mutations all check `public.superadmins` through the signed-in user's Supabase client. Row Level Security restricts users to checking only their own admin row; the migration also adds superadmin-only read policies for profiles, posts, and votes and a superadmin-only caption update policy. The app uses only the publishable key and does not bypass RLS with a service-role key.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For local development, run the admin app on port 3001 (for example, `npm run dev -- --port 3001`); Hello World links to `http://localhost:3001` by default. On Vercel, its Admin Panel link defaults to `https://coms-6998-admin-panel.vercel.app`. Set `ADMIN_PANEL_URL` to override the destination (for example, when using a custom domain).
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The admin header includes a “Back to Hello World” button. It defaults to `http://localhost:3000` locally and `https://coms-6998-hello-world.vercel.app` on Vercel. Set `HELLO_WORLD_URL` to override the destination (for example, when using a custom domain).
