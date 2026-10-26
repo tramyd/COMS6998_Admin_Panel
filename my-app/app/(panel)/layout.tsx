@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { signOut } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import { checkSuperadmin, getHelloWorldUrl } from "@/lib/superadmin";
@@ -9,11 +10,15 @@ export const instant = false;
 const navigation = [
   { href: "/dashboard", label: "Overview" },
   { href: "/profiles", label: "Profiles" },
+  { href: "/images", label: "Images" },
+  { href: "/deleted-posts", label: "Deleted posts" },
+  { href: "/prompt-chains", label: "Prompt chains" },
   { href: "/comments", label: "AI comments" },
   { href: "/feedback", label: "Ratings & votes" },
 ];
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  await connection();
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error?.name === "AuthSessionMissingError") redirect("/");
@@ -35,14 +40,19 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   return (
     <div className="app-shell">
-      <header className="admin-header">
-        <Link className="admin-title" href="/dashboard">AI Meme Caption Generator Admin Panel</Link>
+      <aside className="admin-sidebar">
+        <Link className="admin-title" href="/dashboard">
+          <span>AI Meme Caption Generator</span>
+          <span className="admin-title-subtitle">Admin Panel</span>
+        </Link>
         <nav className="admin-nav" aria-label="Admin navigation">
-          {navigation.map((item) => <Link className="header-button" href={item.href} key={item.href}>{item.label}</Link>)}
-          <a className="header-button" href={getHelloWorldUrl()}>Back to Hello World</a>
-          <form action={signOut}><button className="header-button" type="submit">Sign out</button></form>
+          {navigation.map((item) => <Link className="sidebar-link" href={item.href} key={item.href}>{item.label}</Link>)}
         </nav>
-      </header>
+        <div className="sidebar-footer">
+          <a className="sidebar-link" href={getHelloWorldUrl()}>Back to Hello World</a>
+          <form action={signOut}><button className="sidebar-link" type="submit">Sign out</button></form>
+        </div>
+      </aside>
       <main className="admin-main"><div className="page-content">{children}</div></main>
     </div>
   );
